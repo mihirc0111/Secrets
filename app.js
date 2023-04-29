@@ -4,6 +4,8 @@ const ejs = require("ejs");
 const mongoose = require("mongoose");
 const encrypt = require("mongoose-encryption");
 const app = express();
+
+
  
 app.use(express.static("public"));
 app.set("view engine", "ejs");
@@ -22,6 +24,9 @@ app.use(cors())
 // require these installations for env file to protect password(IMP!!!!!)
 //npm i require body-parser cors dotenv
  
+
+console.log(process.env.API_KEY);
+
 // mongoose.connect("mongodb://127.0.0.1:27017/userDB",{useNewUrlParser: true});
 //Connecting to the database using mongoose.
 main().catch(err => console.log(err));
@@ -41,7 +46,7 @@ const userSchema = new mongoose.Schema ({
   });
  
   const secret = "Thisisourlittlesecret.";
-userSchema.plugin(encrypt, { secret: secret, encryptedFields: ["password"] });
+userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] });
 
 
 
