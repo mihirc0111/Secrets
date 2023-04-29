@@ -3,7 +3,10 @@ const bodyParser = require("body-parser");
 const ejs = require("ejs");
 const mongoose = require("mongoose");
 // const encrypt = require("mongoose-encryption");
-const md5 = require("md5");
+// const md5 = require("md5");
+const bcrypt = require("bcrypt");
+const saltRounds = 10;
+
 const app = express();
 
 
@@ -26,7 +29,7 @@ app.use(cors())
 //npm i require body-parser cors dotenv
  
 
-console.log(md5("123456"));
+// console.log(md5("123456"));
 
 // mongoose.connect("mongodb://127.0.0.1:27017/userDB",{useNewUrlParser: true});
 //Connecting to the database using mongoose.
@@ -69,9 +72,11 @@ app.get("/register", (req, res)=>{
 });
  
 app.post("/register", (req,res)=>{
+
+    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
     const newUser = new User({
         email: req.body.username,
-        password: md5(req.body.password)
+        password: hash
     });
  
     newUser.save()
@@ -82,22 +87,29 @@ app.post("/register", (req,res)=>{
         console.log(err);
     })
 });
+
+});
  
 app.post("/login", function(req,res){
     const username = req.body.username;
-    const password = md5(req.body.password);
+    const password = req.body.password;
  
     User.findOne({email: username})
     .then(function(foundUser){
-        if(foundUser.password ===password){
-            res.render("secrets");
-        }
-    })
+        // if(foundUser.password ===password){ //However, in this code, the if statement before the bcrypt.compare method is already checking if the plain password matches the hashed password. This is unnecessary because the whole point of hashing passwords is to avoid storing them in plain text, making them more secure.
+// Therefore, you can remove the if statement before the bcrypt.compare method and just use the result of the comparison to render the secrets page.
+
+            bcrypt.compare(req.body.password, foundUser.password).then( function(result) {
+                if (result == true) {
+                  res.render("secrets");}
+        })
+    // }
+})
     .catch(function(err){
         console.log(err);
     })
  
-})
+});
  
  
  
