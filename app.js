@@ -4,8 +4,11 @@ const ejs = require("ejs");
 const mongoose = require("mongoose");
 // const encrypt = require("mongoose-encryption");
 // const md5 = require("md5");
-const bcrypt = require("bcrypt");
-const saltRounds = 10;
+// const bcrypt = require("bcrypt");
+// const saltRounds = 10;
+const session = require('express-session');
+const passport = require("passport");
+const passportLocalMongoose = require("passport-local-mongoose");
 
 const app = express();
 
@@ -29,9 +32,17 @@ app.use(cors())
 //npm i require body-parser cors dotenv
  
 
-// console.log(md5("123456"));
 
-// mongoose.connect("mongodb://127.0.0.1:27017/userDB",{useNewUrlParser: true});
+app.use(session({
+  secret: "Our little secret.",
+  resave: false,
+  saveUninitialized: false
+}));
+
+app.use(passport.initialize());
+app.use(passport.session());
+
+
 //Connecting to the database using mongoose.
 main().catch(err => console.log(err));
 async function main() {
@@ -39,10 +50,8 @@ async function main() {
   await mongoose.connect(MONGODB_URI);
 } 
 
-
-
-
-
+// mongoose.set("useCreateIndex", true);//giving error in our case
+//Error: useCreateIndex: "useCreateIndex" is not a valid option to set
 
 const userSchema = new mongoose.Schema ({
     email: String,
@@ -50,14 +59,15 @@ const userSchema = new mongoose.Schema ({
   });
  
   const secret = "Thisisourlittlesecret.";
-// userSchema.plugin(encrypt, { secret: process.env.SECRET, encryptedFields: ["password"] });
 
-
-
-
+  userSchema.plugin(passportLocalMongoose);
 
 const User = new mongoose.model("User", userSchema);
  
+passport.use(User.createStrategy());
+
+passport.serializeUser(User.serializeUser());
+passport.deserializeUser(User.deserializeUser());
  
 app.get("/", function (req, res) {
   res.render('home');
@@ -70,46 +80,60 @@ app.get("/login", function(req, res) {
 app.get("/register", (req, res)=>{
   res.render("register");
 });
- 
-app.post("/register", (req,res)=>{
 
-    bcrypt.hash(req.body.password, saltRounds, function(err, hash) {
-    const newUser = new User({
-        email: req.body.username,
-        password: hash
+app.get("/secrets", function(req, res){
+    if (req.isAuthenticated()){
+      res.render("secrets");
+    } else {
+      res.redirect("/login");
+    }
+  });
+
+  app.get("/logout", function (req,res){
+    req.logOut(function(err){
+        if (err){
+            console.log("##### Error when logging out");
+        }else{
+            res.redirect("/");        
+        }
     });
- 
-    newUser.save()
-    .then(function(){
-        res.render("secrets");
-    })
-    .catch(function(err){
-        console.log(err);
-    })
+    
 });
+ 
+  app.post("/register", function(req, res){
 
-});
- 
-app.post("/login", function(req,res){
-    const username = req.body.username;
-    const password = req.body.password;
- 
-    User.findOne({email: username})
-    .then(function(foundUser){
-        // if(foundUser.password ===password){ //However, in this code, the if statement before the bcrypt.compare method is already checking if the plain password matches the hashed password. This is unnecessary because the whole point of hashing passwords is to avoid storing them in plain text, making them more secure.
-// Therefore, you can remove the if statement before the bcrypt.compare method and just use the result of the comparison to render the secrets page.
-
-            bcrypt.compare(req.body.password, foundUser.password).then( function(result) {
-                if (result == true) {
-                  res.render("secrets");}
-        })
-    // }
-})
-    .catch(function(err){
+    User.register({username: req.body.username}, req.body.password, function(err, user){
+      if (err) {
         console.log(err);
-    })
+        res.redirect("/register");
+      } else {
+        passport.authenticate("local")(req, res, function(){
+          res.redirect("/secrets");
+        });
+      }
+    });
+  
+  });
  
-});
+  app.post("/login", function(req, res){
+
+    const user = new User({
+      username: req.body.username,
+      password: req.body.password
+    });
+  
+    req.login(user, function(err){
+      if (err) {
+        console.log(err);
+      } else {
+        passport.authenticate("local")(req, res, function(){
+          res.redirect("/secrets");
+        });
+      }
+    });
+  
+  });
+  
  
  
  
