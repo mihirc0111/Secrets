@@ -12,9 +12,25 @@ app.use(
     extended: true
   })
 );
+
+//Added by me which is not present in Lecture(IMP !!!!!)
+// const request = require("request");
+const cors = require('cors')
+require("dotenv").config();
+app.use(bodyParser.json());
+app.use(cors())
+// require these installations for env file to protect password(IMP!!!!!)
+//npm i require body-parser cors dotenv
  
-mongoose.connect("mongodb://127.0.0.1:27017/userDB",{useNewUrlParser: true});
- 
+// mongoose.connect("mongodb://127.0.0.1:27017/userDB",{useNewUrlParser: true});
+//Connecting to the database using mongoose.
+main().catch(err => console.log(err));
+async function main() {
+  const MONGODB_URI = process.env.MONGODB_URI;
+  await mongoose.connect(MONGODB_URI);
+} 
+
+
 const userSchema = {
     email: String,
     password: String
@@ -68,6 +84,12 @@ app.post("/login", function(req,res){
  
  
  
-app.listen(3000, function () {
-  console.log("Server started at port 3000");
+
+//To choose deafault port provided by hosting platform
+let port = process.env.PORT;
+if (port == null || port == "") {
+    port = 3000;
+}
+app.listen(port, function () {
+    console.log("Server is running on port 3000 or " + port);
 });
